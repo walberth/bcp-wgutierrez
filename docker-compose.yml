@@ -38,7 +38,18 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - './COMPOSE/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro'
+      - './COMPOSE/mongo_init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro'
+    networks:
+      - wgutierrez_net
+
+  mongodb-seed:
+    image: mongo:latest
+    container_name: mongodb-seed
+    depends_on:
+      - mongodb
+    volumes:
+      - ./COMPOSE/mongo_init.js:/tmp/mongo_init.js
+    entrypoint: ["mongosh", "mongodb://root:root@mongodb:27017/admin", "/tmp/mongo_init.js"]
     networks:
       - wgutierrez_net
 
@@ -108,6 +119,23 @@ services:
       - jaeger
       - sql_server
       - sql_server-init
+    networks:
+      - wgutierrez_net
+
+  api_payment:
+    build:
+        context: .
+        dockerfile: ./API_PAYMENT/Dockerfile
+    container_name: api_payment
+    ports:
+      - "4080:4080"
+    environment:
+      - JaegerServer=http://jaeger:4317
+    depends_on:
+      - elasticsearch
+      - jaeger
+      - mongodb
+      - mongodb-seed
     networks:
       - wgutierrez_net
 

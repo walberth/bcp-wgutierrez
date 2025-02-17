@@ -62,9 +62,9 @@ GO
 
 insert into [dbo].[Pedido] (FechaPedido, IdCliente, MontoPedido) 
 values 
-	(CURRENT_TIMESTAMP, 1, 145), 
-	(CURRENT_TIMESTAMP, 2, 145), 
-	(CURRENT_TIMESTAMP, 3, 145);
+	(CURRENT_TIMESTAMP, 1, 145.50), 
+	(CURRENT_TIMESTAMP, 2, 200.75), 
+	(CURRENT_TIMESTAMP, 3, 300.00);
 GO
 --SELECT * FROM [dbo].[Cliente];
 --SELECT * FROM [dbo].[Pedido];

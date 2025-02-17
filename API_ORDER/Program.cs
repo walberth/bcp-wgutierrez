@@ -54,7 +54,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, OrderSerializerContext.Default);
 });
 
-#region TODO: TRACING
+#region TRACING
 
 var jaegerserver = builder.Configuration.GetValue<string>("JaegerServer") ?? throw new Exception("No se ha configurado la informaci�n del 'Jaeger Server' correctamente");
 
@@ -118,11 +118,11 @@ builder.Services.AddScoped<ClientHandler>();
 
 #region DATABASE
 
-var loggerFactory = new LoggerFactory(new[] { new DebugLoggerProvider() });
 builder.Services.AddDbContext<DatabaseContext>(options =>
 {
     if (isInDevelopment)
     {
+        var loggerFactory = new LoggerFactory(new[] { new DebugLoggerProvider() });
         options.UseLoggerFactory(loggerFactory);
         options.EnableSensitiveDataLogging();
         options.EnableDetailedErrors().LogTo(Console.WriteLine, LogLevel.Debug);
@@ -135,16 +135,9 @@ builder.Services.AddScoped<IClientRepository, ClientRepository>();
 
 #endregion
 
-//builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
-
 var app = builder.Build();
 
-//app.UsePathBase("/");
-//app.UseSwagger();
-//app.UseSwaggerUI();
-
-app.MapGet("/", () => "Hello World!");
+app.MapGet("/", () => "Hello World from Orders API!");
 
 app.MapOrders();
 app.MapClients();

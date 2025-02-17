@@ -45,9 +45,9 @@ RUN apt-get update \
 USER app
 
 # Configurar el puerto a usar
-ENV ASPNETCORE_URLS=http://+:5258
+ENV ASPNETCORE_URLS=http://+:4070
 ENV JaegerServer=http://localhost:4317
-ENV ApiDeliveryUrl=http://localhost:5291
+ENV ApiPaymentUrl=http://localhost:4080
 ENV Serilog__WriteTo__2__Args__nodes__0=http://localhost:9200
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)

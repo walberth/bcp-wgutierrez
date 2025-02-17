@@ -3,10 +3,9 @@
     "DEBUG": {
       "commandName": "Project",
       "launchBrowser": false,
-      "launchUrl": "swagger",
       "dotnetRunMessages": true,
       "sqlDebugging": true,
-      "applicationUrl": "http://localhost:5258",
+      "applicationUrl": "http://localhost:4070",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
