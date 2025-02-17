@@ -29,9 +29,9 @@ services:
       - wgutierrez_net
     entrypoint: ["sh", "-c", "/init-delay.sh"]
 
-  mongodb:
+  mongodb-pagos:
     image: mongo:latest
-    container_name: mongodb
+    container_name: mongodb-pagos
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
@@ -42,14 +42,14 @@ services:
     networks:
       - wgutierrez_net
 
-  mongodb-seed:
+  mongodb-pagos-seed:
     image: mongo:latest
-    container_name: mongodb-seed
+    container_name: mongodb-pagos-seed
     depends_on:
-      - mongodb
+      - mongodb-pagos
     volumes:
       - ./COMPOSE/mongo_init.js:/tmp/mongo_init.js
-    entrypoint: ["mongosh", "mongodb://root:root@mongodb:27017/admin", "/tmp/mongo_init.js"]
+    entrypoint: ["mongosh", "mongodb://root:root@mongodb-pagos:27017/admin", "/tmp/mongo_init.js"]
     networks:
       - wgutierrez_net
 
@@ -134,8 +134,8 @@ services:
     depends_on:
       - elasticsearch
       - jaeger
-      - mongodb
-      - mongodb-seed
+      - mongodb-pagos
+      - mongodb-pagos-seed
     networks:
       - wgutierrez_net
 

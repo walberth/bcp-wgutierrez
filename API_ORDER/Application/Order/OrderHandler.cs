@@ -23,6 +23,8 @@ namespace API_ORDER.Application.Order
 
             await _orderRepository.Add(order);
 
+            // TODO: CALL PAYMENT API
+
             await Task.CompletedTask;
         }
     }

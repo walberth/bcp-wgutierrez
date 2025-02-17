@@ -1,5 +1,3 @@
-//using Circuit.ApiInvoice.Datasources;
-//using Circuit.Commons;
 using API_ORDER.Application.Client;
 using API_ORDER.Application.Order;
 using API_ORDER.Domain.Client;
