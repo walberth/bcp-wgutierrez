@@ -23,11 +23,11 @@ RUN ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools unixodbc-dev
 # Add tools to PATH
 RUN echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
 
-# Give Permissions
-# COPY ./COMPOSE/init-delay.sh init-delay.sh
+# Copy the init-delay.sh script into the container
+COPY --chmod=755 init-delay.sh /usr/local/bin/init-delay.sh
 
-# Give Permissions
-# RUN chmod +x ./init-delay.sh
+# Ensure the script has executable permissions
+# RUN chmod +x /usr/local/bin/init-delay.sh
 
 # Clean up
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*

@@ -22,9 +22,9 @@ services:
     depends_on:
       - sql_server
     volumes:
-      - ./init-delay.sh:/init-delay.sh
-      - ./wait-for-it.sh:/wait-for-it.sh
-      - ./sql_init.sql:/sql_init.sql
+      - ./COMPOSE/init-delay.sh:/init-delay.sh
+      - ./COMPOSE/wait-for-it.sh:/wait-for-it.sh
+      - ./COMPOSE/sql_init.sql:/sql_init.sql
     networks:
       - wgutierrez_net
     entrypoint: ["sh", "-c", "/init-delay.sh"]
@@ -52,7 +52,6 @@ services:
     entrypoint: ["mongosh", "mongodb://root:root@mongodb-pagos:27017/admin", "/tmp/mongo_init.js"]
     networks:
       - wgutierrez_net
-
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.6.1
@@ -102,6 +101,47 @@ services:
       - "4317:4317"
       - "4318:4318"
       - "9411:9411"
+    networks:
+      - wgutierrez_net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.1
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - wgutierrez_net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092" # Internal listener
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    networks:
+      - wgutierrez_net
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKER_CONNECT: kafka:29092
+    depends_on:
+      - zookeeper
+      - kafka
     networks:
       - wgutierrez_net
 
