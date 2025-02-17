@@ -17,5 +17,10 @@ namespace API_ORDER.Infrastructure
         {
             return await _context.Client.ToListAsync();
         }
+
+        public async Task<Client> Get(int idCliente)
+        {
+            return await _context.Client.FirstOrDefaultAsync(x => x.IdCliente == idCliente);
+        }
     }
 }

@@ -1,18 +1,25 @@
 using API_ORDER.Application.Client;
 using API_ORDER.Application.Order;
+using API_ORDER.Configuration;
+using API_ORDER.Domain;
 using API_ORDER.Domain.Client;
 using API_ORDER.Domain.Order;
 using API_ORDER.Endpoints;
 using API_ORDER.Infrastructure;
 using API_ORDER.Infrastructure.Context;
+using Confluent.Kafka;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Debug;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Polly;
+using Polly.Extensions.Http;
 using Serilog;
 using System.Diagnostics;
+using System.Net.Http.Headers;
+using Log = Serilog.Log;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -37,11 +44,80 @@ builder.Services.AddHttpContextAccessor();
 
 #endregion
 
-#region Logs
+#region LOGS
 
 builder.Host.UseSerilog((context, loggerConfig) =>
 {
     loggerConfig.ReadFrom.Configuration(context.Configuration);
+});
+
+#endregion
+
+#region POLLY
+
+var retryPolicy = HttpPolicyExtensions
+    .HandleTransientHttpError() // Handles 5xx, 408, etc.
+    .WaitAndRetryAsync(
+        retryCount: 3,
+        sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff
+        onRetry: (outcome, timespan, retryAttempt, context) =>
+        {
+            Log.Information($"Retry {retryAttempt} after {timespan.TotalSeconds} seconds due to {outcome.Exception?.Message}");
+        });
+
+var circuitBreakerPolicy = HttpPolicyExtensions
+    .HandleTransientHttpError()
+    .CircuitBreakerAsync(
+        handledEventsAllowedBeforeBreaking: 3, // Open after 3 consecutive failures
+        durationOfBreak: TimeSpan.FromSeconds(30), // Circuit stays open for 30s
+        onBreak: (outcome, breakDelay, context) =>
+        {
+            Log.Warning($"Circuit opened for {breakDelay.TotalSeconds} seconds due to {outcome.Exception?.Message}");
+        },
+        onReset: (context) =>
+        {
+            Log.Warning("Circuit closed, normal operation resumed.");
+        },
+        onHalfOpen: () =>
+        {
+            Log.Warning("Circuit is half-open. Next call will test the circuit.");
+        });
+
+var timeoutPolicy = Policy.TimeoutAsync<HttpResponseMessage>(
+    TimeSpan.FromSeconds(10), // 10s timeout
+    onTimeoutAsync: (context, timespan, task) =>
+    {
+        Log.Error($"Request timed out after {timespan.TotalSeconds} seconds.");
+        return Task.CompletedTask;
+    });
+
+builder.Services.AddHttpClient("PaymentApiClient", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration.GetValue<string>("ApiPaymentUrl")
+        ?? throw new Exception("No se ha configurado la información del 'API PAYMENT' correctamente"));
+    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+})
+
+.AddPolicyHandler(retryPolicy)
+.AddPolicyHandler(circuitBreakerPolicy)
+.AddPolicyHandler(timeoutPolicy);
+
+#endregion
+
+
+#region KAFKA
+
+var kafkaSettings = new KafkaSettings();
+builder.Configuration.GetSection("Kafka").Bind(kafkaSettings);
+builder.Services.AddSingleton(kafkaSettings);
+
+builder.Services.AddSingleton<IProducer<Null, string>>(sp =>
+{
+    var config = new ProducerConfig
+    {
+        BootstrapServers = kafkaSettings.BootstrapServers
+    };
+    return new ProducerBuilder<Null, string>(config).Build();
 });
 
 #endregion
@@ -54,7 +130,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 #region TRACING
 
-var jaegerserver = builder.Configuration.GetValue<string>("JaegerServer") ?? throw new Exception("No se ha configurado la informaci�n del 'Jaeger Server' correctamente");
+var jaegerserver = builder.Configuration.GetValue<string>("JaegerServer")
+    ?? throw new Exception("No se ha configurado la información del 'Jaeger Server' correctamente");
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(opt => opt
@@ -69,6 +146,8 @@ builder.Services.AddOpenTelemetry()
 
 #endregion
 
+#region CORS
+
 builder.Services.AddCors(options =>
 {
     var corsOriginAllowed = builder.Configuration.GetSection("AllowedOrigins").Get<List<string>>();
@@ -80,6 +159,8 @@ builder.Services.AddCors(options =>
         .AllowAnyHeader()
         );
 });
+
+#endregion
 
 #region METRICS
 
@@ -105,7 +186,7 @@ TypeAdapterConfig<RequestDto, Order>
     .Map(dest => dest.MontoPedido, src => src.MontoPago)
     .Ignore(dest => dest.Client);
 
-TypeAdapterConfig<Client, ClientDto>
+TypeAdapterConfig<API_ORDER.Domain.Client.Client, ClientDto>
     .NewConfig()
     .Map(dest => dest.NombreCliente, src => src.NombreCliente);
 
@@ -126,8 +207,10 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
         options.EnableDetailedErrors().LogTo(Console.WriteLine, LogLevel.Debug);
     }
 
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new Exception("No se ha configurado la informaci�n de la base de datos correctamente"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new Exception("No se ha configurado la informaci�n de la base de datos correctamente"));
 });
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
 
@@ -157,9 +240,9 @@ try
 }
 catch (Exception ex)
 {
-    Serilog.Log.Fatal(ex, "Application start-up failed");
+    Log.Fatal(ex, "Application start-up failed");
 }
 finally
 {
-    Serilog.Log.CloseAndFlush();
+    Log.CloseAndFlush();
 }

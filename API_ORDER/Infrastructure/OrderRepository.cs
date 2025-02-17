@@ -1,5 +1,8 @@
 ﻿using API_ORDER.Domain.Order;
 using API_ORDER.Infrastructure.Context;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
+using System.Data.Common;
 
 namespace API_ORDER.Infrastructure
 {
@@ -12,8 +15,13 @@ namespace API_ORDER.Infrastructure
             _context = context;
         }
 
-        public async Task<int> Add(Order entity)
+        public async Task<int> Add(Order entity, IDbTransaction transaction)
         {
+            if (_context.Database.CurrentTransaction == null || transaction == default)
+            {
+                await _context.Database.UseTransactionAsync((DbTransaction)transaction);
+            }
+
             await _context.Order.AddAsync(entity);
             return await _context.SaveChangesAsync();
         }
