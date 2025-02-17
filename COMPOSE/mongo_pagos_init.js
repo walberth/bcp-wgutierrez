@@ -1,4 +1,4 @@
-db = db.getSiblingDB('Pagos');
+db = db.getSiblingDB("Pagos");
 
 try {
   // Drop collection if it exists (optional, for dev environments)
@@ -10,39 +10,39 @@ try {
 
 try {
   // Create collection with schema validation
-  db.createCollection('Pagos', {
+  db.createCollection("Pagos", {
     validator: {
       $jsonSchema: {
-        bsonType: 'object',
-        required: ['FechaPago', 'IdCliente', 'FormaPago'],
+        bsonType: "object",
+        required: ["FechaPago", "IdCliente", "FormaPago", "MontoPago"],
         properties: {
           FechaPago: {
-            bsonType: 'date',
-            description: 'Payment date'
+            bsonType: "date",
+            description: "Payment date",
           },
           IdCliente: {
-            bsonType: 'int',
-            description: 'Client ID (integer)'
+            bsonType: "int",
+            description: "Client ID (integer)",
           },
           IdPedido: {
-            bsonType: 'int',
-            description: 'Order ID (integer)'
+            bsonType: "int",
+            description: "Order ID (integer)",
           },
           FormaPago: {
-            bsonType: 'int',
+            bsonType: "int",
             enum: [1, 2, 3], // Only accepts 1, 2, or 3
-            description: 'Payment method: 1 = Efectivo, 2 = TDC, 3 = TDD'
+            description: "Payment method: 1 = Efectivo, 2 = TDC, 3 = TDD",
           },
           MontoPago: {
-            bsonType: 'decimal',
-            description: 'Payment amount (Decimal128)'
-          }
-        }
-      }
-    }
+            bsonType: "decimal",
+            description: "Payment amount (Decimal128)",
+          },
+        },
+      },
+    },
   });
 
-    print('Collection "Pagos" created successfully with validation rules.');
+  print('Collection "Pagos" created successfully with validation rules.');
 } catch (err) {
   print('ERROR: Failed to create "Pagos" collection. Reason: ' + err.message);
   quit(1); // Stop script execution on error
@@ -52,31 +52,33 @@ try {
   // Insert sample data
   db.Pagos.insertMany([
     {
-      FechaPago: new Date('2024-02-01'),
+      FechaPago: new Date("2024-02-01"),
       IdPedido: 1,
       IdCliente: 1,
       FormaPago: 1, // Efectivo
-      MontoPago: NumberDecimal("145.50")
+      MontoPago: NumberDecimal("145.50"),
     },
     {
-      FechaPago: new Date('2024-02-02'),
+      FechaPago: new Date("2024-02-02"),
       IdPedido: 2,
       IdCliente: 2,
       FormaPago: 2, // TDC
-      MontoPago: NumberDecimal("200.75")
+      MontoPago: NumberDecimal("200.75"),
     },
     {
-      FechaPago: new Date('2024-02-03'),
+      FechaPago: new Date("2024-02-03"),
       IdPedido: 3,
       IdCliente: 3,
       FormaPago: 3, // TDD
-      MontoPago: NumberDecimal("300.00")
-    }
+      MontoPago: NumberDecimal("300.00"),
+    },
   ]);
 
   print('Sample data inserted successfully into "Pagos" collection.');
 } catch (err) {
-  print('ERROR: Failed to insert sample data into "Pagos". Reason: ' + err.message);
+  print(
+    'ERROR: Failed to insert sample data into "Pagos". Reason: ' + err.message
+  );
   quit(1); // Stop further execution on error
 }
 

@@ -22,12 +22,12 @@ services:
     depends_on:
       - sql_server
     volumes:
-      - ./COMPOSE/init-delay.sh:/init-delay.sh
-      - ./COMPOSE/wait-for-it.sh:/wait-for-it.sh
-      - ./COMPOSE/sql_init.sql:/sql_init.sql
+      - ./COMPOSE/init-delay.sh:/usr/local/bin/init-delay.sh
+      - ./COMPOSE/wait-for-it.sh:/usr/local/bin/wait-for-it.sh
+      - ./COMPOSE/sql_init.sql:/usr/local/bin/sql_init.sql
     networks:
       - wgutierrez_net
-    entrypoint: ["sh", "-c", "/init-delay.sh"]
+    entrypoint: ["sh", "-c", "/usr/local/bin/init-delay.sh"]
 
   mongodb-pagos:
     image: mongo:latest
@@ -38,7 +38,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - './COMPOSE/mongo_init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro'
+      - './COMPOSE/mongo_pagos_init.js:/docker-entrypoint-initdb.d/mongo_pagos_init.js:ro'
     networks:
       - wgutierrez_net
 
@@ -48,8 +48,32 @@ services:
     depends_on:
       - mongodb-pagos
     volumes:
-      - ./COMPOSE/mongo_init.js:/tmp/mongo_init.js
-    entrypoint: ["mongosh", "mongodb://root:root@mongodb-pagos:27017/admin", "/tmp/mongo_init.js"]
+      - ./COMPOSE/mongo_pagos_init.js:/tmp/mongo_pagos_init.js
+    entrypoint: ["mongosh", "mongodb://root:root@mongodb-pagos:27017/admin", "/tmp/mongo_pagos_init.js"]
+    networks:
+      - wgutierrez_net
+
+  mongodb-consultas:
+    image: mongo:latest
+    container_name: mongodb-consultas
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27018:27017"
+    volumes:
+      - './COMPOSE/mongo_consultas_init.js:/docker-entrypoint-initdb.d/mongo_consultas_init.js:ro'
+    networks:
+      - wgutierrez_net
+
+  mongodb-consultas-seed:
+    image: mongo:latest
+    container_name: mongodb-consultas-seed
+    depends_on:
+      - mongodb-consultas
+    volumes:
+      - ./COMPOSE/mongo_consultas_init.js:/tmp/mongo_consultas_init.js
+    entrypoint: ["mongosh", "mongodb://root:root@mongodb-consultas:27018/admin", "/tmp/mongo_consultas_init.js"]
     networks:
       - wgutierrez_net
 
@@ -127,6 +151,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CREATE_TOPICS: "consultation-topic:1:1"
     depends_on:
       - zookeeper
     networks:
@@ -159,6 +184,9 @@ services:
       - jaeger
       - sql_server
       - sql_server-init
+      - kafdrop
+      - kafka
+      - zookeeper
     networks:
       - wgutierrez_net
 
@@ -176,6 +204,29 @@ services:
       - jaeger
       - mongodb-pagos
       - mongodb-pagos-seed
+      - api_order
+    networks:
+      - wgutierrez_net
+
+  api_consultation:
+    build:
+        context: .
+        dockerfile: ./API_CONSULTATION/Dockerfile
+    container_name: api_consultation
+    ports:
+      - "4090:4090"
+    environment:
+      - JaegerServer=http://jaeger:4317
+    depends_on:
+      - elasticsearch
+      - jaeger
+      - mongodb-consultas
+      - mongodb-consultas-seed
+      - api_order
+      - api_payment
+      - kafdrop
+      - kafka
+      - zookeeper
     networks:
       - wgutierrez_net
 

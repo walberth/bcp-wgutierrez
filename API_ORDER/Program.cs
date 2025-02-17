@@ -104,7 +104,6 @@ builder.Services.AddHttpClient("PaymentApiClient", client =>
 
 #endregion
 
-
 #region KAFKA
 
 var kafkaSettings = new KafkaSettings();

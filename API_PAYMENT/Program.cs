@@ -37,7 +37,7 @@ builder.Services.AddHttpContextAccessor();
 
 #endregion
 
-#region Logs
+#region LOGS
 
 builder.Host.UseSerilog((context, loggerConfig) =>
 {
