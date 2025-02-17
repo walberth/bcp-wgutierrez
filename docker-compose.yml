@@ -1,0 +1,116 @@
+services:
+  sql_server:
+    build:
+        context: ./COMPOSE
+        dockerfile: Dockerfile
+    container_name: sqlserver-db
+    environment:
+      SA_PASSWORD: "sql2016."
+      ACCEPT_EULA: "Y"
+    volumes:
+      - ./COMPOSE:/var/opt/mssql/backup
+    ports:
+      - "1440:1433"
+    networks:
+      - wgutierrez_net
+
+  sql_server-init:
+    build:
+        context: ./COMPOSE
+        dockerfile: Dockerfile
+    container_name: sqlserver-init
+    depends_on:
+      - sql_server
+    volumes:
+      - ./init-delay.sh:/init-delay.sh
+      - ./wait-for-it.sh:/wait-for-it.sh
+      - ./sql_init.sql:/sql_init.sql
+    networks:
+      - wgutierrez_net
+    entrypoint: ["sh", "-c", "/init-delay.sh"]
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
+    volumes:
+      - './COMPOSE/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro'
+    networks:
+      - wgutierrez_net
+
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.1
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false   # Desactiva la seguridad, solo para pruebas locales
+      - xpack.security.audit.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    networks:
+      - wgutierrez_net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.6.1
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      - SERVER_NAME=kibana
+      - ELASTICSEARCH_HOSTS=["http://elasticsearch:9200"]
+      - xpack.security.enabled=false   # Desactiva la seguridad, solo para pruebas locales
+      - xpack.security.audit.enabled=false
+    networks:
+      - wgutierrez_net
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=badger
+      - BADGER_EPHEMERAL=true
+      - JAEGER_STORAGE_TAGS_AS_FIELDS_ALL=true  # <- Agrega esto para indexar todos los tags personalizados
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+      - "14268:14268"
+      - "4317:4317"
+      - "4318:4318"
+      - "9411:9411"
+    networks:
+      - wgutierrez_net
+
+  api_order:
+    build:
+        context: .
+        dockerfile: ./API_ORDER/Dockerfile
+    container_name: api_order
+    ports:
+      - "4070:4070"
+    environment:
+      - JaegerServer=http://jaeger:4317
+    depends_on:
+      - elasticsearch
+      - jaeger
+      - sql_server
+      - sql_server-init
+    networks:
+      - wgutierrez_net
+
+networks:
+  wgutierrez_net:
+    driver: bridge
