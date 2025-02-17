@@ -1,4 +1,5 @@
 ﻿using API_CONSULTATION.Application.Consultation;
+using API_CONSULTATION.CrossCutting;
 using API_CONSULTATION.Domain.Consultation;
 using Confluent.Kafka;
 using MapsterMapper;
@@ -9,23 +10,34 @@ namespace API_CONSULTATION.Application.Background
     public class ConsultationProcess : BackgroundService
     {
         private readonly IConsumer<Null, string> _consumer;
-        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ConsultationProcess> _logger;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly TimeSpan _timePeriod = TimeSpan.FromSeconds(Constant.BackgroundSecondsToWait);
 
         public ConsultationProcess(
             IConsumer<Null, string> consumer,
-            IServiceProvider serviceProvider,
-            ILogger<ConsultationProcess> logger
+            ILogger<ConsultationProcess> logger,
+            IServiceScopeFactory serviceScopeFactory
         )
         {
             _logger = logger;
             _consumer = consumer;
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            Task.Run(() =>
+            using var timer = new PeriodicTimer(_timePeriod);
+
+            while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                Process(stoppingToken);
+            }
+        }
+
+        private Task Process(CancellationToken stoppingToken)
+        {
+            return Task.Factory.StartNew(() =>
             {
                 _consumer.Subscribe("consultation-topic");
 
@@ -34,19 +46,16 @@ namespace API_CONSULTATION.Application.Background
                     while (!stoppingToken.IsCancellationRequested)
                     {
                         var result = _consumer.Consume(stoppingToken);
-                        var consultation = JsonSerializer.Deserialize<ConsultationDto>(result.Message.Value);
 
-                        if (consultation != null)
+                        if (result != null)
                         {
+                            var consultation = JsonSerializer.Deserialize<ConsultationDto>(result.Message.Value);
                             _logger.LogInformation($"Consumed message: {result.Message.Value}");
 
-                            using var scope = _serviceProvider.CreateScope();
-
-                            var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
-                            var consultationRepository = scope.ServiceProvider.GetRequiredService<IConsultationRepository>();
-
-                            var entity = mapper.Map<Domain.Consultation.Consultation>(consultation);
-
+                            if (result != null)
+                            {
+                                ProcessMessageAsync(consultation);
+                            }
                         }
                     }
                 }
@@ -56,7 +65,27 @@ namespace API_CONSULTATION.Application.Background
                     _logger.LogError($"Consumed message throws an error: {ex.Message}");
                     _consumer.Close();
                 }
-            }, stoppingToken);
+                catch (ConsumeException ex)
+                {
+                    _logger.LogError($"Consumption error: {ex.Error.Reason}");
+                    _consumer.Close();
+                }
+                finally
+                {
+                    _logger.LogInformation($"Consumption cllose");
+                    _consumer.Close();
+                }
+            }, TaskCreationOptions.LongRunning);
+        }
+
+        private async Task ProcessMessageAsync(ConsultationDto consultation)
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
+            var consultationRepository = scope.ServiceProvider.GetRequiredService<IConsultationRepository>();
+
+            var entity = mapper.Map<Domain.Consultation.Consultation>(consultation);
+            await consultationRepository.Add(entity);
         }
     }
 }

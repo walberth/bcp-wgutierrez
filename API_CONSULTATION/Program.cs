@@ -6,6 +6,7 @@ using API_CONSULTATION.CrossCutting;
 using API_CONSULTATION.Domain.Consultation;
 using API_CONSULTATION.Endpoints;
 using API_CONSULTATION.Infrastructure;
+using Confluent.Kafka;
 using Mapster;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
@@ -19,6 +20,7 @@ using System.Diagnostics;
 var builder = WebApplication.CreateSlimBuilder(args);
 
 var isInDevelopment = Convert.ToBoolean(builder.Configuration["IsInDevelopment"]);
+Constant.BackgroundSecondsToWait = Convert.ToInt32(builder.Configuration.GetSection("Background:SecondsToWait").Value);
 
 builder.WebHost.UseUrls("http://+:4090");
 builder.Services.AddHttpContextAccessor();
@@ -39,7 +41,7 @@ builder.Services.AddHttpContextAccessor();
 
 #endregion
 
-#region Logs
+#region LOGS
 
 builder.Host.UseSerilog((context, loggerConfig) =>
 {
@@ -52,6 +54,27 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, ConsultationSerializerContext.Default);
 });
+
+#region KAFKA
+
+var kafkaSettings = new KafkaSettings();
+builder.Configuration.GetSection("Kafka").Bind(kafkaSettings);
+builder.Services.AddSingleton(kafkaSettings);
+
+builder.Services.AddSingleton<IConsumer<Null, string>>(sp =>
+{
+    var config = new ConsumerConfig
+    {
+        BootstrapServers = kafkaSettings.BootstrapServers,
+        GroupId = kafkaSettings.GroupId,
+        AutoOffsetReset = AutoOffsetReset.Earliest,
+        EnableAutoCommit = false
+    };
+
+    return new ConsumerBuilder<Null, string>(config).Build();
+});
+
+#endregion
 
 #region TRACING
 
@@ -177,7 +200,7 @@ builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
 
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World from Payments API!");
+app.MapGet("/", () => "Hello World from Consultations API!");
 
 app.MapConsultations();
 //app.UseOpenTelemetryPrometheusScrapingEndpoint();

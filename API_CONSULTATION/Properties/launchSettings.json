@@ -1,21 +1,21 @@
 {
   "profiles": {
-    "http": {
+    "DEBUG": {
       "commandName": "Project",
-      "launchBrowser": true,
-      "launchUrl": "todos",
+      "launchBrowser": false,
+      "dotnetRunMessages": true,
+      "sqlDebugging": true,
+      "applicationUrl": "http://localhost:4090",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:5261"
+      }
     },
-    "Container (Dockerfile)": {
+    "DEBUG (DOCKER)": {
       "commandName": "Docker",
       "launchBrowser": true,
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/todos",
       "environmentVariables": {
-        "ASPNETCORE_HTTP_PORTS": "8080"
+        "ASPNETCORE_HTTP_PORTS": "4090"
       },
       "publishAllPorts": true,
       "useSSL": false

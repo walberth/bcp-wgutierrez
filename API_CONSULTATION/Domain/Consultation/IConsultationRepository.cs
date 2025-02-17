@@ -2,7 +2,7 @@
 {
     public interface IConsultationRepository
     {
-        Task<string> Add(Consultation entity);
+        Task Add(Consultation entity);
 
         Task<IEnumerable<Consultation>> GetAll();
     }

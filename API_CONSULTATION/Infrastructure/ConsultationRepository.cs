@@ -13,10 +13,9 @@ namespace API_CONSULTATION.Infrastructure
             _consultationsCollection = database.GetCollection<Consultation>("Consultas");
         }
 
-        public async Task<string> Add(Consultation entity)
+        public async Task Add(Consultation entity)
         {
             await _consultationsCollection.InsertOneAsync(entity);
-            return entity.IdConsulta;
         }
 
         public async Task<IEnumerable<Consultation>> GetAll()
