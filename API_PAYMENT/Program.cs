@@ -1,9 +1,6 @@
-﻿//using Circuit.ApiInvoice.Datasources;
-//using Circuit.Commons;
-using API_PAYMENT.Application.Enums;
+﻿using API_PAYMENT.Application.Enums;
 using API_PAYMENT.Application.Payment;
 using API_PAYMENT.Configuration;
-using API_PAYMENT.CrossCutting;
 using API_PAYMENT.Domain.Payment;
 using API_PAYMENT.Endpoints;
 using API_PAYMENT.Infrastructure;
@@ -71,6 +68,8 @@ builder.Services.AddOpenTelemetry()
 
 #endregion
 
+#region CORS
+
 builder.Services.AddCors(options =>
 {
     var corsOriginAllowed = builder.Configuration.GetSection("AllowedOrigins").Get<List<string>>();
@@ -82,6 +81,8 @@ builder.Services.AddCors(options =>
         .AllowAnyHeader()
         );
 });
+
+#endregion
 
 #region METRICS
 
@@ -114,7 +115,7 @@ TypeAdapterConfig<Payment, PaymentDto>
     .Map(dest => dest.FechaPago, src => src.FechaPago)
     .Map(dest => dest.IdCliente, src => src.IdCliente)
     .Map(dest => dest.IdPedido, src => src.IdPedido)
-    .Map(dest => dest.FormaPago, src => $"{((FormaPagoEnum)src.FormaPago).GetEnumMemberValue()}")
+    .Map(dest => dest.FormaPago, src => $"{(FormaPagoEnum)src.FormaPago}")
     .Map(dest => dest.MontoPago, src => src.MontoPago);
 
 #endregion

@@ -16,13 +16,14 @@ namespace API_PAYMENT.Application.Payment
             _paymentRepository = paymentRepository;
         }
 
-        public async Task Add(PaymentDto information)
+        public async Task<PaymentDto> Add(PaymentDto information)
         {
             var payment = _mapper.Map<Domain.Payment.Payment>(information);
 
-            await _paymentRepository.Add(payment);
+            var paymentId = await _paymentRepository.Add(payment);
+            payment.IdPago = paymentId;
 
-            await Task.CompletedTask;
+            return _mapper.Map<PaymentDto>(payment);
         }
 
         public async Task<IEnumerable<PaymentDto>> GetAll()
