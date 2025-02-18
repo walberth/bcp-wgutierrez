@@ -19,6 +19,8 @@ using System.Diagnostics;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
+await Task.Delay(20000);
+
 var isInDevelopment = Convert.ToBoolean(builder.Configuration["IsInDevelopment"]);
 Constant.BackgroundSecondsToWait = Convert.ToInt32(builder.Configuration.GetSection("Background:SecondsToWait").Value);
 

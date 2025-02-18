@@ -74,6 +74,8 @@ services:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: root
       ME_CONFIG_MONGODB_SERVER: mongodb-pagos
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_AUTH_DATABASE: admin
     depends_on:
       mongodb-pagos:
         condition: service_healthy
@@ -122,6 +124,7 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: root
       ME_CONFIG_MONGODB_SERVER: mongodb-consultas
       ME_CONFIG_MONGODB_PORT: 27018
+      ME_CONFIG_MONGODB_AUTH_DATABASE: admin
     depends_on:
       mongodb-consultas:
         condition: service_healthy
@@ -238,6 +241,26 @@ services:
     networks:
       - wgutierrez_net
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.2
+    container_name: keycloak
+    command:
+      - start-dev
+      - --import-realm # 👈 This allows realm import
+    environment:
+      KC_DB: dev-file
+      KC_HTTP_PORT: 8075
+      KC_HOSTNAME: localhost
+      KC_ADMIN: admin
+      KC_ADMIN_PASSWORD: admin
+    ports:
+      - "8075:8075"
+    volumes:
+      - ./COMPOSE/keycloak-realm.json:/opt/keycloak/data/import/keycloak-realm.json
+    networks:
+      - wgutierrez_net
+
+
   api_order:
     build:
         context: .
@@ -251,7 +274,7 @@ services:
       sql_server:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
       jaeger:
         condition: service_started
     networks:
@@ -289,7 +312,7 @@ services:
       mongodb-consultas:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
       elasticsearch:
         condition: service_started
       jaeger:

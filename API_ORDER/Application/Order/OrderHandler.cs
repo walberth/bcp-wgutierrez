@@ -69,7 +69,8 @@ namespace API_ORDER.Application.Order
                     IdPedido = payment.IdPedido,
                     NombreCliente = client.NombreCliente,
                     IdPago = payment.IdPago,
-                    MontoPago = payment.MontoPago
+                    MontoPago = payment.MontoPago,
+                    FormaPago = information.FormaPago
                 };
 
                 try

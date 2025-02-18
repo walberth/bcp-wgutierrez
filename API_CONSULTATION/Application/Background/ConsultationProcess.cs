@@ -54,7 +54,8 @@ namespace API_CONSULTATION.Application.Background
 
                             if (result != null)
                             {
-                                ProcessMessageAsync(consultation);
+                                ProcessMessageAsync(consultation).GetAwaiter().GetResult(); // Synchronous wait for safe commit
+                                _consumer.Commit(result);
                             }
                         }
                     }
