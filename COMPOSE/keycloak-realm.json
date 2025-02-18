@@ -7,6 +7,7 @@
       "protocol": "openid-connect",
       "publicClient": true,
       "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
       "redirectUris": ["*"]
     },
     {
@@ -14,20 +15,28 @@
       "protocol": "openid-connect",
       "publicClient": true,
       "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
       "redirectUris": ["*"]
     }
   ],
   "users": [
     {
       "username": "wgutierrez",
+      "email": "wgutierrez@example.com",
+      "firstName": "Walberth",
+      "lastName": "Gutierrez",
+      "createdTimestamp": 1708252800000, 
       "enabled": true,
+      "emailVerified": true,
       "credentials": [
         {
           "type": "password",
           "value": "password",
           "temporary": false
         }
-      ]
+      ],
+      "realmRoles": ["offline_access", "uma_authorization", "admin", "user"],
+      "requiredActions": []
     }
   ]
 }
