@@ -159,6 +159,16 @@ services:
     networks:
       - wgutierrez_net
 
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.1
+    depends_on:
+      - kafka
+    entrypoint: [ "bash", "-c", "/usr/local/bin/init_kafka_topics.sh" ]
+    volumes:
+      - ./COMPOSE/init_kafka_topics.sh:/usr/local/bin/init_kafka_topics.sh
+    networks:
+      - wgutierrez_net
+
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
     container_name: kafdrop
@@ -188,6 +198,7 @@ services:
       - sql_server-init
       - kafdrop
       - kafka
+      - kafka-init
       - zookeeper
     networks:
       - wgutierrez_net
@@ -227,6 +238,7 @@ services:
       - api_order
       - api_payment
       - kafdrop
+      - kafka-init
       - kafka
       - zookeeper
     networks:
