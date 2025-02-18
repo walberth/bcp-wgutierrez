@@ -114,7 +114,8 @@ builder.Services.AddSingleton<IProducer<Null, string>>(sp =>
 {
     var config = new ProducerConfig
     {
-        BootstrapServers = kafkaSettings.BootstrapServers
+        BootstrapServers = kafkaSettings.BootstrapServers,
+        MessageTimeoutMs = 15000
     };
     return new ProducerBuilder<Null, string>(config).Build();
 });

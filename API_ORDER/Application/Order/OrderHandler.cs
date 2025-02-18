@@ -85,6 +85,14 @@ namespace API_ORDER.Application.Order
                     transaction?.Rollback();
                     await Task.CompletedTask;
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Delivery failed: {ex.Message}");
+                }
+                finally
+                {
+                    _logger.LogInformation("Delivery finnalizing");
+                }
 
                 transaction?.Commit();
             }

@@ -60,11 +60,13 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
     ports:
-      - "27018:27017"
+      - "27018:27018" # Host port:Container port
     volumes:
       - './COMPOSE/mongo_consultas_init.js:/docker-entrypoint-initdb.d/mongo_consultas_init.js:ro'
+    command: ["mongod", "--port", "27018"]
     networks:
       - wgutierrez_net
+
 
   mongodb-consultas-seed:
     image: mongo:latest
