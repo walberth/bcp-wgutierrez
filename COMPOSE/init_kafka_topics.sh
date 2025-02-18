@@ -1,8 +1,12 @@
 #!/bin/bash
 
-# Wait for Kafka broker to be ready (optional, but recommended)
 echo "Waiting for Kafka to be ready..."
-sleep 10
+until kafka-topics --list --bootstrap-server kafka:29092 > /dev/null 2>&1; do
+    echo "Kafka is not ready. Retrying in 5 seconds..."
+    sleep 5
+done
+
+echo "Kafka is ready. Creating topic if not exists..."
 
 # Create the topic
 kafka-topics --create \

@@ -13,6 +13,11 @@ services:
       - "1440:1433"
     networks:
       - wgutierrez_net
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "SA", "-P", "sql2016.", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   sql_server-init:
     build:
@@ -20,7 +25,8 @@ services:
         dockerfile: Dockerfile
     container_name: sqlserver-init
     depends_on:
-      - sql_server
+      sql_server:
+        condition: service_healthy
     volumes:
       - ./COMPOSE/init-delay.sh:/usr/local/bin/init-delay.sh
       - ./COMPOSE/wait-for-it.sh:/usr/local/bin/wait-for-it.sh
@@ -41,15 +47,36 @@ services:
       - './COMPOSE/mongo_pagos_init.js:/docker-entrypoint-initdb.d/mongo_pagos_init.js:ro'
     networks:
       - wgutierrez_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   mongodb-pagos-seed:
     image: mongo:latest
     container_name: mongodb-pagos-seed
     depends_on:
-      - mongodb-pagos
+      mongodb-pagos:
+        condition: service_healthy
     volumes:
       - ./COMPOSE/mongo_pagos_init.js:/tmp/mongo_pagos_init.js
     entrypoint: ["mongosh", "mongodb://root:root@mongodb-pagos:27017/admin", "/tmp/mongo_pagos_init.js"]
+    networks:
+      - wgutierrez_net
+
+  mongo-express-pagos:
+    image: mongo-express
+    container_name: mongo-express-pagos
+    ports:
+      - "8082:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: root
+      ME_CONFIG_MONGODB_SERVER: mongodb-pagos
+    depends_on:
+      mongodb-pagos:
+        condition: service_healthy
     networks:
       - wgutierrez_net
 
@@ -63,19 +90,41 @@ services:
       - "27018:27018" # Host port:Container port
     volumes:
       - './COMPOSE/mongo_consultas_init.js:/docker-entrypoint-initdb.d/mongo_consultas_init.js:ro'
+      - mongodb_consultas_data:/data/db
     command: ["mongod", "--port", "27018"]
     networks:
       - wgutierrez_net
-
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27018", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   mongodb-consultas-seed:
     image: mongo:latest
     container_name: mongodb-consultas-seed
     depends_on:
-      - mongodb-consultas
+      mongodb-consultas:
+        condition: service_healthy
     volumes:
       - ./COMPOSE/mongo_consultas_init.js:/tmp/mongo_consultas_init.js
     entrypoint: ["mongosh", "mongodb://root:root@mongodb-consultas:27018/admin", "/tmp/mongo_consultas_init.js"]
+    networks:
+      - wgutierrez_net
+
+  mongo-express-consultas:
+    image: mongo-express
+    container_name: mongo-express-consultas
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: root
+      ME_CONFIG_MONGODB_SERVER: mongodb-consultas
+      ME_CONFIG_MONGODB_PORT: 27018
+    depends_on:
+      mongodb-consultas:
+        condition: service_healthy
     networks:
       - wgutierrez_net
 
@@ -102,7 +151,8 @@ services:
     ports:
       - "5601:5601"
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_started
     environment:
       - SERVER_NAME=kibana
       - ELASTICSEARCH_HOSTS=["http://elasticsearch:9200"]
@@ -158,9 +208,15 @@ services:
       - zookeeper
     networks:
       - wgutierrez_net
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:29092" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka-init:
     image: confluentinc/cp-kafka:7.5.1
+    container_name: kafka-init
     depends_on:
       - kafka
     entrypoint: [ "bash", "-c", "/usr/local/bin/init_kafka_topics.sh" ]
@@ -192,14 +248,12 @@ services:
     environment:
       - JaegerServer=http://jaeger:4317
     depends_on:
-      - elasticsearch
-      - jaeger
-      - sql_server
-      - sql_server-init
-      - kafdrop
-      - kafka
-      - kafka-init
-      - zookeeper
+      sql_server:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
     networks:
       - wgutierrez_net
 
@@ -213,11 +267,12 @@ services:
     environment:
       - JaegerServer=http://jaeger:4317
     depends_on:
-      - elasticsearch
-      - jaeger
-      - mongodb-pagos
-      - mongodb-pagos-seed
-      - api_order
+      jaeger:
+        condition: service_started
+      mongodb-pagos:
+        condition: service_healthy
+      api_order:
+        condition: service_started
     networks:
       - wgutierrez_net
 
@@ -231,19 +286,24 @@ services:
     environment:
       - JaegerServer=http://jaeger:4317
     depends_on:
-      - elasticsearch
-      - jaeger
-      - mongodb-consultas
-      - mongodb-consultas-seed
-      - api_order
-      - api_payment
-      - kafdrop
-      - kafka-init
-      - kafka
-      - zookeeper
+      mongodb-consultas:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
+      jaeger:
+        condition: service_started
+      api_order:
+        condition: service_started
+      api_payment:
+        condition: service_started
     networks:
       - wgutierrez_net
 
 networks:
   wgutierrez_net:
     driver: bridge
+
+volumes:
+  mongodb_consultas_data:
