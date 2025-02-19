@@ -21,19 +21,21 @@ var isInDevelopment = Convert.ToBoolean(builder.Configuration["IsInDevelopment"]
 builder.WebHost.UseUrls("http://+:4080");
 builder.Services.AddHttpContextAccessor();
 
-#region TODO: AUTH
+#region AUTHENTICATION
 
-//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//    .AddJwtBearer(opt =>
-//    {
-//        opt.Authority = builder.Configuration.GetValue<string>("FederateApi:AuthorityUrl");
-//        opt.Audience = builder.Configuration.GetValue<string>("FederateApi:AudienceUrl");
-//        opt.RequireHttpsMetadata = false;
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer(options =>
+    {
+        options.Authority = builder.Configuration["Keycloak:Authority"];
+        options.Audience = builder.Configuration["Keycloak:Audience"];
+        options.RequireHttpsMetadata = false;
 
-//        opt.TokenValidationParameters.ValidateAudience = true;
-//    });
+        options.TokenValidationParameters.ValidateIssuerSigningKey = false;
+        options.TokenValidationParameters.ValidateAudience = false;
+        options.TokenValidationParameters.ValidateIssuer = false;
+    });
 
-//builder.Services.AddAuthorization();
+builder.Services.AddAuthorization();
 
 #endregion
 
@@ -171,9 +173,12 @@ builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World from Payments API!");
+app.UseAuthentication();
+app.UseAuthorization();
 
-app.MapPayments();
+app.MapGet("/", () => "Hello World from Payments API!").AllowAnonymous();
+
+app.MapPayments().RequireAuthorization();
 //app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.UseCors("CorsPolicy");

@@ -1,6 +1,9 @@
 {
-  "realm": "myrealm",
+  "realm": "wgutierrez_realm",
   "enabled": true,
+  "accessTokenLifespan": 3600,
+  "bruteForceProtected": true,
+  "sslRequired": "none",
   "clients": [
     {
       "clientId": "api-order",
