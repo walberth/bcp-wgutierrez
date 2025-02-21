@@ -93,13 +93,21 @@ var timeoutPolicy = Policy.TimeoutAsync<HttpResponseMessage>(
         return Task.CompletedTask;
     });
 
-builder.Services.AddHttpClient("PaymentApiClient", client =>
+builder.Services.AddHttpClient("PaymentApiClient", (serviceProvider, client) =>
 {
+    var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
+    var httpContext = httpContextAccessor.HttpContext;
+
+    if (httpContext != null && httpContext.Request.Headers.ContainsKey("Authorization"))
+    {
+        var bearerToken = httpContext.Request.Headers["Authorization"].ToString();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken.Replace("Bearer ", ""));
+    }
+
     client.BaseAddress = new Uri(builder.Configuration.GetValue<string>("ApiPaymentUrl")
         ?? throw new Exception("No se ha configurado la información del 'API PAYMENT' correctamente"));
     client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 })
-
 .AddPolicyHandler(retryPolicy)
 .AddPolicyHandler(circuitBreakerPolicy)
 .AddPolicyHandler(timeoutPolicy);
