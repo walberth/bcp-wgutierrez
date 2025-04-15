@@ -26,6 +26,8 @@ builder.Configuration
 
 builder.Configuration.AddConfigServer(builder.Environment);
 
+builder.Services.AddHealthChecks();
+
 await Task.Delay(20000);
 
 var isInDevelopment = Convert.ToBoolean(builder.Configuration["IsInDevelopment"]);
@@ -210,6 +212,7 @@ builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
 var app = builder.Build();
 
 app.MapGet("/", () => "Hello World from Consultations API!");
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.MapConsultations();
 //app.UseOpenTelemetryPrometheusScrapingEndpoint();

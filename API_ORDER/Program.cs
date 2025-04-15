@@ -32,6 +32,8 @@ builder.Configuration
 
 builder.Configuration.AddConfigServer(builder.Environment);
 
+builder.Services.AddHealthChecks();
+
 // Set the environment
 var environment = builder.Configuration["environment"] ?? "Production";
 builder.Host.UseEnvironment(environment);
@@ -245,6 +247,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => "Hello World from Orders API!").AllowAnonymous();
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.MapOrders().RequireAuthorization();
 app.MapClients().RequireAuthorization();

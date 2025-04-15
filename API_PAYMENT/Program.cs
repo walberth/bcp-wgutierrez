@@ -25,6 +25,8 @@ builder.Configuration
 
 builder.Configuration.AddConfigServer(builder.Environment);
 
+builder.Services.AddHealthChecks();
+
 var isInDevelopment = Convert.ToBoolean(builder.Configuration["IsInDevelopment"]);
 
 builder.WebHost.UseUrls("http://+:4080");
@@ -186,6 +188,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => "Hello World from Payments API!").AllowAnonymous();
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.MapPayments().RequireAuthorization();
 //app.UseOpenTelemetryPrometheusScrapingEndpoint();
