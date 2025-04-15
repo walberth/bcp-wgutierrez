@@ -15,9 +15,16 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
+using Steeltoe.Extensions.Configuration.ConfigServer;
 using System.Diagnostics;
 
 var builder = WebApplication.CreateSlimBuilder(args);
+
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+builder.Configuration.AddConfigServer(builder.Environment);
 
 await Task.Delay(20000);
 

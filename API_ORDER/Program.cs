@@ -26,8 +26,11 @@ var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.Configuration.Sources.Clear();
 
-builder.Configuration.AddConfigServer()
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+builder.Configuration.AddConfigServer(builder.Environment);
 
 // Set the environment
 var environment = builder.Configuration["environment"] ?? "Production";

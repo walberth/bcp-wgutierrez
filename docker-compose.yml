@@ -192,6 +192,12 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     networks:
       - wgutierrez_net
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep imok"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   kafka:
     image: confluentinc/cp-kafka:7.5.1
@@ -208,8 +214,9 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_CREATE_TOPICS: "consultation-topic:1:1"
-    depends_on:
-      - zookeeper
+    # depends_on:
+    #   zookeeper:
+    #     condition: service_healthy
     networks:
       - wgutierrez_net
     healthcheck:
@@ -294,6 +301,9 @@ services:
     container_name: config_server
     environment:
       - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/walberth/ms-configuration
+      - SPRING_CLOUD_CONFIG_SERVER_GIT_SEARCH_PATHS=.
+      - SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL=main
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=DEBUG
     ports:
       - "4677:4677"
     command: ["--server.port=4677"]
@@ -305,26 +315,26 @@ services:
       timeout: 10s
       retries: 5
 
-  api_order:
-    build:
-        context: .
-        dockerfile: ./API_ORDER/Dockerfile
-    container_name: api_order
-    ports:
-      - "4070:4070"
-    environment:
-      - JaegerServer=http://jaeger:4317
-    depends_on:
-      sql_server:
-        condition: service_healthy
-      config_server:
-        condition: service_healthy
-      kafka:
-        condition: service_started
-      jaeger:
-        condition: service_started
-    networks:
-      - wgutierrez_net
+  # api_order:
+  #   build:
+  #       context: .
+  #       dockerfile: ./API_ORDER/Dockerfile
+  #   container_name: api_order
+  #   ports:
+  #     - "4070:4070"
+  #   environment:
+  #     - JaegerServer=http://jaeger:4317
+  #   depends_on:
+  #     sql_server:
+  #       condition: service_healthy
+  #     config_server:
+  #       condition: service_healthy
+  #     kafka:
+  #       condition: service_started
+  #     jaeger:
+  #       condition: service_started
+  #   networks:
+  #     - wgutierrez_net
 
   api_payment:
     build:
@@ -340,8 +350,8 @@ services:
         condition: service_started
       mongodb-pagos:
         condition: service_healthy
-      api_order:
-        condition: service_started
+      # api_order:
+      #   condition: service_started
     networks:
       - wgutierrez_net
 
@@ -363,8 +373,8 @@ services:
         condition: service_started
       jaeger:
         condition: service_started
-      api_order:
-        condition: service_started
+      # api_order:
+      #   condition: service_started
       api_payment:
         condition: service_started
     networks:
@@ -383,7 +393,7 @@ services:
     networks:
       - wgutierrez_net
     depends_on:
-      - api_order
+      # - api_order
       - api_payment
       - api_consultation
 
