@@ -208,19 +208,16 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_CREATE_TOPICS: "consultation-topic:1:1"
-    # depends_on:
-    #   zookeeper:
-    #     condition: service_healthy
     networks:
       - wgutierrez_net
     healthcheck:
-      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:29092" ]
+      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server kafka:29092" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -296,45 +293,50 @@ services:
     networks:
       - wgutierrez_net
 
-  config_server:
+  configserver:
     image: steeltoeoss/config-server
-    container_name: config_server
+    container_name: configserver
     environment:
       - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/walberth/ms-configuration
       - SPRING_CLOUD_CONFIG_SERVER_GIT_SEARCH_PATHS=.
       - SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL=main
-      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=DEBUG
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=ERROR
     ports:
       - "4677:4677"
     command: ["--server.port=4677"]
     networks:
       - wgutierrez_net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4677/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://configserver:4677/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  # api_order:
-  #   build:
-  #       context: .
-  #       dockerfile: ./API_ORDER/Dockerfile
-  #   container_name: api_order
-  #   ports:
-  #     - "4070:4070"
-  #   environment:
-  #     - JaegerServer=http://jaeger:4317
-  #   depends_on:
-  #     sql_server:
-  #       condition: service_healthy
-  #     config_server:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_started
-  #     jaeger:
-  #       condition: service_started
-  #   networks:
-  #     - wgutierrez_net
+  api_order:
+    build:
+        context: .
+        dockerfile: ./API_ORDER/Dockerfile
+    container_name: api_order
+    ports:
+      - "4070:4070"
+    environment:
+      - JaegerServer=http://jaeger:4317
+    depends_on:
+      sql_server:
+        condition: service_healthy
+      configserver:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://api_order:4070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - wgutierrez_net
 
   api_payment:
     build:
@@ -348,10 +350,17 @@ services:
     depends_on:
       jaeger:
         condition: service_started
+      configserver:
+        condition: service_healthy
       mongodb-pagos:
         condition: service_healthy
-      # api_order:
-      #   condition: service_started
+      api_order:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://api_payment:4080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     networks:
       - wgutierrez_net
 
@@ -367,16 +376,23 @@ services:
     depends_on:
       mongodb-consultas:
         condition: service_healthy
+      configserver:
+        condition: service_healthy
       kafka:
         condition: service_started
       elasticsearch:
         condition: service_started
       jaeger:
         condition: service_started
-      # api_order:
-      #   condition: service_started
+      api_order:
+        condition: service_healthy
       api_payment:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://api_consultation:4090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     networks:
       - wgutierrez_net
 
@@ -393,9 +409,12 @@ services:
     networks:
       - wgutierrez_net
     depends_on:
-      # - api_order
-      - api_payment
-      - api_consultation
+      api_order:
+        condition: service_healthy
+      api_payment:
+        condition: service_healthy
+      api_consultation:
+        condition: service_healthy
 
 networks:
   wgutierrez_net:
