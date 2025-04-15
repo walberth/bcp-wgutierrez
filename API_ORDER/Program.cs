@@ -17,11 +17,21 @@ using OpenTelemetry.Trace;
 using Polly;
 using Polly.Extensions.Http;
 using Serilog;
+using Steeltoe.Extensions.Configuration.ConfigServer;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using Log = Serilog.Log;
 
 var builder = WebApplication.CreateSlimBuilder(args);
+
+builder.Configuration.Sources.Clear();
+
+builder.Configuration.AddConfigServer()
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+// Set the environment
+var environment = builder.Configuration["environment"] ?? "Production";
+builder.Host.UseEnvironment(environment);
 
 var isInDevelopment = Convert.ToBoolean(builder.Configuration["IsInDevelopment"]);
 

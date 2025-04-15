@@ -24,3 +24,6 @@
     - **USERNAME:** admin  
     - **PASSWORD:** admin
     - **GENERATE JWT:** curl -X POST "http://localhost:8075/realms/wgutierrez_realm/protocol/openid-connect/token" -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=api-order" -d "grant_type=password" -d "username=wgutierrez" -d "password=password"
+
+- **CONTAINER LOGS:**
+  - **DOZZLE:** [http://localhost:9999/](http://localhost:9999/)

@@ -289,6 +289,22 @@ services:
     networks:
       - wgutierrez_net
 
+  config_server:
+    image: steeltoeoss/config-server
+    container_name: config_server
+    environment:
+      - SPRING_CLOUD_CONFIG_SERVER_GIT_URI=https://github.com/walberth/ms-configuration
+    ports:
+      - "4677:4677"
+    command: ["--server.port=4677"]
+    networks:
+      - wgutierrez_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4677/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   api_order:
     build:
         context: .
@@ -300,6 +316,8 @@ services:
       - JaegerServer=http://jaeger:4317
     depends_on:
       sql_server:
+        condition: service_healthy
+      config_server:
         condition: service_healthy
       kafka:
         condition: service_started
@@ -351,6 +369,23 @@ services:
         condition: service_started
     networks:
       - wgutierrez_net
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    ports:
+      - "9999:8080" # Map Dozzle UI to port 9999 on the host
+    environment:
+      - DOZZLE_BASE=/ # Base URL (default root)
+      - DOZZLE_LEVEL=info # Log level (info, debug, warn, error)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Required to access container logs
+    networks:
+      - wgutierrez_net
+    depends_on:
+      - api_order
+      - api_payment
+      - api_consultation
 
 networks:
   wgutierrez_net:
